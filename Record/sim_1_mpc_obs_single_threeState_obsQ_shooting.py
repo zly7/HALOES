@@ -118,9 +118,9 @@ class Case:
             case.ymax = max(case.y0, case.yf) + 10
 
             case.obs_num = int(v[6])  # 获取障碍物数目
-            num_vertexes = np.array(v[7:7 + case.obs_num], dtype=np.int)  # 获取每个障碍物的边数
+            num_vertexes = np.array(v[7:7 + case.obs_num], dtype=np.int32)  # 获取每个障碍物的边数
             # 计算每个障碍物顶点坐标的开始位置
-            vertex_start = 7 + case.obs_num + (np.cumsum(num_vertexes, dtype=np.int) - num_vertexes) * 2
+            vertex_start = 7 + case.obs_num + (np.cumsum(num_vertexes, dtype=np.int32) - num_vertexes) * 2
             case.obs = []
             for vs, nv in zip(vertex_start, num_vertexes):
                 # 添加每个障碍物顶点的坐标

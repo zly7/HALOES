@@ -13,7 +13,7 @@ from pyobca.search import *
 from pympc.mpc_optimizer import MPCOptimizer
 from saveCsv import saveCsv
 import argparse
-
+from readZLYAnswer import ZLYAnswer
 
 def get_argparse():
     parse = argparse.ArgumentParser(description="Information of Automated Parking.")
@@ -26,6 +26,7 @@ def get_argparse():
     parse.add_argument("--obca_gap", type=int, default=1, help="The gap of obca.")
     parse.add_argument("--gen_npy", action="store_true", default=False, help="Generate the numpy data of trajectory.")
     parse.add_argument("--data_num", type=int, default=3, help="The number of generate numpy data.")
+    parse.add_argument("--use_ZLY", type=bool, default=False, help="whether use ZLY initial guess.")
     args = parse.parse_args()
     return args
 
@@ -38,14 +39,21 @@ if __name__ == '__main__':
     case = Case.read('BenchmarkCases/Case%d.csv' % path_num)
     vehicle = Vehicle()
     # 模型预测轨迹规划
-    mpc_optimizer = MPCOptimizer(case, vehicle, args)
-    mpc_optimizer.initialize()
-    mpc_optimizer.build_model()
-    mpc_optimizer.generate_object(disCostFinal=50000, deltaCostFinal=10000, disCost=1000, deltaCost=5000,
-                                  aCost=0, steerCost=0, obsPower=1.6)
-    mpc_optimizer.generate_constrain()
-    final_path, initQuadraticPath = mpc_optimizer.solve()
-    # OBCA二次优化
+    whether_use_ZLY = args.use_ZLY
+    if whether_use_ZLY:
+        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False)
+        zlyAnswer.readTXT()
+        initQuadraticPath = zlyAnswer.vehicleNode3D
+        final_path = zlyAnswer.final_path
+    else:
+        mpc_optimizer = MPCOptimizer(case, vehicle, args)
+        mpc_optimizer.initialize()
+        mpc_optimizer.build_model()
+        mpc_optimizer.generate_object(disCostFinal=50000, deltaCostFinal=10000, disCost=1000, deltaCost=5000,
+                                    aCost=0, steerCost=0, obsPower=1.6)
+        mpc_optimizer.generate_constrain()
+        final_path, initQuadraticPath = mpc_optimizer.solve()
+    # OBCA二次优化,这里显然就是生成的path
     cfg = VehicleConfig()
     cfg.T = args.sample_time
     gap = args.obca_gap

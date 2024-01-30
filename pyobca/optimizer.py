@@ -59,7 +59,7 @@ class OBCAOptimizer:
         if self.N < 1:
             print('empty init guess')
             return False
-        x = SX.sym('x')
+        x = SX.sym('x') # 没有用SX.sym标记的都不是最基本的变量
         y = SX.sym('y')
         v = SX.sym('v')
         theta = SX.sym('theta')
@@ -74,10 +74,10 @@ class OBCAOptimizer:
         #                            a, v/self.lr*sin(beta)), steering_rate)
         # beta = atan(self.lr * tan(steering) / (self.lr + self.lf))
         self.rhs = vertcat(vertcat(v * cos(theta), v * sin(theta),
-                                   a, v / self.lwb * tan(steering)), steering_rate)
+                                   a, v / self.lwb * tan(steering)), steering_rate) # 这里都是速度的指标。所以要有离散时间
         self.f = Function('f', [self.state, self.control], [self.rhs])
         self.X = SX.sym('X', self.n_states, self.N)
-        self.U = SX.sym('U', self.n_controls, self.N-1)
+        self.U = SX.sym('U', self.n_controls, self.N-1) # 表示维度为n_controls*N-1，是一个二维数组
         self.MU = SX.sym('MU', self.n_dual_variable,
                          self.N*len(self.obstacles))
         self.LAMBDA = SX.sym('LAMBDA', self.n_dual_variable,
@@ -88,10 +88,10 @@ class OBCAOptimizer:
 
     def solve(self):
         nlp_prob = {'f': self.obj, 'x': vertcat(*self.variable),
-                    'g': vertcat(*self.constrains)}
+                    'g': vertcat(*self.constrains)} # 其中f是目标函数（这里初始设置为0），x是优化变量（状态和控制变量），g是约束条件
         solver = nlpsol('solver', 'ipopt', nlp_prob)
         sol = solver(x0=vertcat(*self.x0), lbx=self.lbx, ubx=self.ubx,
-                     ubg=self.ubg, lbg=self.lbg)
+                     ubg=self.ubg, lbg=self.lbg) # 这一行已经解决完了
         u_opt = sol['x']
         self.x_opt = u_opt[0:self.n_states*(self.N):self.n_states]
         self.y_opt = u_opt[1:self.n_states*(self.N):self.n_states]
@@ -170,7 +170,7 @@ class OBCAOptimizer:
                             y+self.offset*sin(heading))
                 r = np.array([[cos(heading), -sin(heading)],
                               [sin(heading), cos(heading)]])
-                lamb = vertcat(self.LAMBDA[:, len(self.obstacles)*i+index])
+                lamb = vertcat(self.LAMBDA[:, len(self.obstacles)*i+index]) # 取到具体的lambda and mu
                 mu = vertcat(self.MU[:, len(self.obstacles)*i+index])
                 index += 1
                 # 公式10的第四项约束
