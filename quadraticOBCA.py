@@ -4,7 +4,7 @@ import math as m
 import matplotlib.pyplot as plt
 import numpy as np
 
-def quadraticPath(initialQuadraticPath, obstacles, vehicle, max_x, max_y, min_x, min_y, gap=1, cfg=None, sampleT=0.1):
+def quadraticPath(initialQuadraticPath, obstacles, vehicle, max_x, max_y, min_x, min_y, gap=1, cfg=None, sampleT=0.1, whether_care_origin_path = False):
     ds_path = downsample_smooth(initialQuadraticPath, gap, vehicle, sampleT)
     if len(ds_path)<2:
         print('no enough path point')
@@ -15,18 +15,37 @@ def quadraticPath(initialQuadraticPath, obstacles, vehicle, max_x, max_y, min_x,
         init_x += [state.x]
         init_y += [state.y]
     # obca optimization
-    optimizer = pyobca.OBCAOptimizer(cfg=cfg)
+    optimizer = pyobca.OBCAOptimizer(cfg=cfg,whether_fix_4Obs=False)
     optimizer.initialize(ds_path, obstacles, max_x=max_x, max_y=max_y, min_x=min_x, min_y=min_y)
     optimizer.build_model()
+    if whether_care_origin_path == 1:
+        optimizer.generate_constrain(kinematic_constraints=0.1)
+    else:
+        optimizer.generate_constrain(kinematic_constraints=0.0)
     optimizer.generate_constrain()
     optimizer.generate_variable()
     r = [[0.1, 0], [0, 0.1]]   #             self.lbx += [-self.v_cfg.max_acc, -self.v_cfg.max_steer_rate]
-    q = [[0.05, 0, 0, 0, 0], #            self.x0 += [[state.x, state.y, state.v,state.heading, state.steer]]
-         [0, 0.05, 0, 0, 0],  
-         [0, 0, 0, 0, 0],
-         [0, 0, 0, 0.1, 0],
-         [0, 0, 0, 0, 0.0],
-         ]
+    if whether_care_origin_path == 1: # 用张力宇的2Da*启发式
+        q = [[0.00, 0, 0, 0, 0], #            self.x0 += [[state.x, state.y, state.v,state.heading, state.steer]]
+            [0, 0.00, 0, 0, 0],  
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.0],
+            ]
+    elif whether_care_origin_path == 2: # 用张力宇的contourAlgorithm启发式
+        q = [[0.05, 0, 0, 0, 0], #            self.x0 += [[state.x, state.y, state.v,state.heading, state.steer]]
+            [0, 0.05, 0, 0, 0],  
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.0],
+            ]
+    else:
+        q = [[0, 0, 0, 0, 0],            
+            [0, 0, 0, 0, 0],  
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.0],
+            ]
     optimizer.generate_object(r, q)
     optimizer.solve()
 
@@ -59,8 +78,15 @@ def downsample_smooth(path, gap, cfg, T=0.1):
             v = (v_1 + v_2)/2
             ds_path[i].v = v
         for i in range(len(ds_path)-1):
+            if ds_path[i+1].heading - ds_path[i].heading > m.pi:
+                ds_path[i+1].heading -= 2*m.pi
+            elif ds_path[i+1].heading - ds_path[i].heading < -m.pi:
+                ds_path[i+1].heading += 2*m.pi
+
+        for i in range(len(ds_path)-1):
             ds_path[i].a += (ds_path[i+1].v - ds_path[i].v)/T
             diff_theta = ds_path[i+1].heading-ds_path[i].heading
+
             direction = 1
             if ds_path[i].v < 0:
                 direction = -1
@@ -68,6 +94,8 @@ def downsample_smooth(path, gap, cfg, T=0.1):
             # steer = np.clip(m.atan(diff_theta*cfg.lw/(move_distance*direction + 0.0000000000001)),
             #                 -cfg.MAX_STEER, cfg.MAX_STEER)
             steer = m.atan(diff_theta*cfg.lw/(move_distance*direction + 0.0000000000001)) # 所以其实这里的steer计算是有问题的
+            if steer > cfg.MAX_STEER or steer < -cfg.MAX_STEER:
+                print('最原本计算的转向角度超过了最大值，本身路径有问题')
             ds_path[i].steer = steer
         ds_path[-1] = path[-1]
         plot_path(ds_path=ds_path)

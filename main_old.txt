@@ -29,6 +29,9 @@ def get_argparse():
     parse.add_argument("--obca_gap", type=int, default=1, help="The gap of obca.")
     parse.add_argument("--gen_npy", action="store_true", default=False, help="Generate the numpy data of trajectory.")
     parse.add_argument("--data_num", type=int, default=3, help="The number of generate numpy data.")
+    parse.add_argument("--use_ZLY", type=bool, default=False, help="whether use ZLY initial guess.")
+    parse.add_argument("--use_ZLY_success", type=bool, default=False, help="whether use ZLY success file.") # 这个因为有OCBA存在所以感觉没用了
+    parse.add_argument("--whether_use_2D", type=bool, default=False, help="whether use ZLY 2D A* and OCBA.")
     parse.add_argument("--alg", type=str, default='HA', help="The algorithm of ZLY.")
     args = parse.parse_args()
     return args
@@ -53,7 +56,19 @@ if __name__ == '__main__':
     alg_name = args.alg
     vehicle = Vehicle()
     # 模型预测轨迹规划
+    whether_use_ZLY = args.use_ZLY
+    # if whether_use_ZLY:
     case = Case.read('BenchmarkCasesZLY/Case%d.csv' % path_num)
+    # else:
+    #     case = Case.read('BenchmarkCases/Case%d.csv' % path_num)
+    whether_use_ZLY_success = args.use_ZLY_success
+    whether_use_2D = args.whether_use_2D
+    # if whether_use_ZLY == True and whether_use_2D == False:
+    #     stringEx = "ZLY"
+    # elif whether_use_2D == True and whether_use_ZLY == True:
+    #     stringEx = "2D_OCBA"
+    # else:
+    #     stringEx = ""
     if alg_name == "HA":
         stringEx = "HA/"
     elif alg_name == "EHHA":
@@ -62,15 +77,13 @@ if __name__ == '__main__':
         stringEx = "ENHA/"
     elif alg_name == "OCBA":
         stringEx = "OCBA/"
-    elif alg_name == "MPC_OCBA":
-        stringEx = "MPC_OCBA/"
     else:
         print("Error: The algorithm name is not correct.")
         stringEx = ""
     if not os.path.exists("./Result/{}case-{}".format(stringEx,path_num)):
         os.mkdir("./Result/{}case-{}".format(stringEx,path_num))
 
-    files = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/output_xresult-*.txt")
+    files = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/output_result-*.txt")
     max_index = 0
     for file in files:
         # 提取文件名中的索引部分
@@ -88,24 +101,24 @@ if __name__ == '__main__':
     flush_thread.daemon = True  # 设置为守护线程，确保程序退出时线程也会退出
     flush_thread.start()
 
-    if alg_name=="EHHA" or alg_name=="ENHA" or alg_name=="HA":
-        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
+    if whether_use_ZLY and not whether_use_2D:
+        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=whether_use_ZLY_success,alg_name=alg_name)
         zlyAnswer.readTXT()
         initQuadraticPath = zlyAnswer.vehicleNode3D
         final_path = zlyAnswer.final_path
-    elif alg_name=="OCBA":
-        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
+    elif whether_use_ZLY and whether_use_2D:
+        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=whether_use_ZLY_success)
         zlyAnswer.readTXT()
-        initQuadraticPath = zlyAnswer.vehicle_2d_ha_path
+        initQuadraticPath = zlyAnswer.vehicle_2d_path
         initQuadraticPath[0].heading = case.theta0
-        initQuadraticPath[-1].heading = case.thetaf
+        initQuadraticPath[-1].heading = case.thetaf 
         for i in range(1,len(initQuadraticPath)-1):
             initQuadraticPath[i].heading = math.atan2((initQuadraticPath[i].y - initQuadraticPath[i-1].y) , (initQuadraticPath[i].x - initQuadraticPath[i-1].x))
         final_path = Path([initQuadraticPath[i].x for i in range(len(initQuadraticPath))],
                           [initQuadraticPath[i].y for i in range(len(initQuadraticPath))],
                           [initQuadraticPath[i].heading for i in range(len(initQuadraticPath))])
 
-    elif alg_name=="MPC_OCBA":
+    else:
         startTime = time.time()
         mpc_optimizer = MPCOptimizer(case, vehicle, args)
         mpc_optimizer.initialize()
@@ -116,9 +129,6 @@ if __name__ == '__main__':
         final_path, initQuadraticPath = mpc_optimizer.solve()
         endTime = time.time()
         print("MPC 无视障碍物找到初始解所花时间: ", endTime - startTime)
-    else:
-        print("Error: The algorithm name is not correct.")
-        sys.exit(1)
     # OBCA二次优化,这里显然就是生成的path
 
 
@@ -131,13 +141,9 @@ if __name__ == '__main__':
         obs = list(case.obs[obs_i])
         obstacles.append(obs)
     whether_care_origin_path = 0
-    # if whether_use_ZLY and whether_use_2D:
-    #     whether_care_origin_path = 1
-    # elif whether_use_ZLY and not whether_use_2D:
-    #     whether_care_origin_path = 2
-    if alg_name=="OCBA" or alg_name=="MPC_OCBA":
-        whether_care_origin_path = 1 #1代表几乎不考虑原始路径
-    else:
+    if whether_use_ZLY and whether_use_2D:
+        whether_care_origin_path = 1
+    elif whether_use_ZLY and not whether_use_2D:
         whether_care_origin_path = 2
     path_x, path_y, path_v, path_yaw, path_steer, path_a, path_steer_rate = quadraticPath(
                                             initialQuadraticPath=initQuadraticPath, obstacles=obstacles,

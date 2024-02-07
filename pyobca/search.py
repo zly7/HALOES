@@ -23,7 +23,7 @@ class VehicleConfig:
         # self.max_front_wheel_angle = 0.6  # rad
         self.max_front_wheel_angle = 0.75  # rad
         self.min_radius = self.wheel_base/m.tan(self.max_front_wheel_angle)
-        self.T = 0.15  # discreate time
+        self.T = 0.1  # discreate time
         # self.max_acc = 5
         # self.max_v = 5
         # self.max_steer_rate = 20

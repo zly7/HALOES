@@ -3,28 +3,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_steer_rate, init_x, init_y, sampleT,
-            exp_name, path_num, args=None, data_num=0):
-    with open('./Result/case-{}/{}-result-{}.csv'.format(path_num, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
+def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_steer_rate, init_x, init_y, sampleT, 
+            exp_name, path_num, args=None, data_num=0, stringEx=''):
+    # 使用 stringEx 更新所有文件和目录路径
+    base_path = "./Result/{}case-{}".format(stringEx, path_num)
+    data_path = "{}/data_{}".format(base_path, data_num) if args and args.gen_npy else ""
+
+    with open('{}/{}-result-{}.csv'.format(base_path, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
         # 写
         writer = csv.writer(fp)
         for i in range(len(path_t)):
             writer.writerow([path_t[i], path_x[i], path_y[i], path_yaw[i]])
-    with open('./Result/case-{}/{}-result-state-{}.csv'.format(path_num, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
+
+    with open('{}/{}-result-state-{}.csv'.format(base_path, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
         # 写
         writer = csv.writer(fp)
         for i in range(len(path_t)):
             writer.writerow([path_t[i], path_x[i], path_y[i], path_v[i], path_yaw[i], path_steer[i]])
-    with open('./Result/case-{}/{}-result-control-{}.csv'.format(path_num, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
+
+    with open('{}/{}-result-control-{}.csv'.format(base_path, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
         # 写
         writer = csv.writer(fp)
         for i in range(len(path_a)):
             writer.writerow([path_t[i], path_a[i], path_steer_rate[i]])
+
+    # 保存图片
     fig, ax = plt.subplots()
     ax.plot(path_x, path_y, 'go', ms=3, label='optimized path')
     ax.plot(init_x, init_y, 'ro', ms=3, label='init path')
     ax.legend()
-    plt.savefig("./Result/case-{}/{}-err-traj-{}.svg".format(path_num, exp_name, path_num))
+    plt.savefig("{}/{}-err-traj-{}.svg".format(base_path, exp_name, path_num))
 
     fig2, ax2 = plt.subplots(4)
     plt.subplots_adjust(hspace=0.35)
@@ -33,34 +41,26 @@ def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_s
     t_steer = [sampleT * k for k in range(len(path_steer))]
     t_steer_rate = [sampleT*k for k in range(len(path_steer_rate))]
     ax2[0].plot(t_v, path_v, label='v-t')
+    ax2[0].set_ylabel('y/(m/s)')
     ax2[1].plot(t_a, path_a, label='a-t')
+    ax2[1].set_ylabel('y/(m/s^2)')
     ax2[2].plot(t_steer, path_steer, label='steer-t')
+    ax2[2].set_ylabel('y/(rad)')
     ax2[3].plot(t_steer_rate, path_steer_rate, label='steer-rate-t')
-    ax2[0].legend()
-    ax2[1].legend()
-    ax2[2].legend()
-    ax2[3].legend()
-    plt.savefig("./Result/case-{}/{}-kina-{}.svg".format(path_num, exp_name, path_num))
+    ax2[3].set_ylabel('y/(rad/s)')
+    ax2[-1].set_xlabel('time/s')  # -1表示最后一个子图
+    for ax in ax2:
+        ax.legend()
+    plt.tight_layout()  # 添加这一行
+    plt.savefig("{}/{}-kina-{}.svg".format(base_path, exp_name, path_num))
 
-    if args.gen_npy:
-        # save numpy array for training
-        outfile_x = "./Result/case-{}/data_{}/array_x".format(path_num, data_num)
-        outfile_y = "./Result/case-{}/data_{}/array_y".format(path_num, data_num)
-        outfile_v = "./Result/case-{}/data_{}/array_v".format(path_num, data_num)
-        outfile_yaw = "./Result/case-{}/data_{}/array_yaw".format(path_num, data_num)
-        outfile_a = "./Result/case-{}/data_{}/array_a".format(path_num, data_num)
-        outfile_steer = "./Result/case-{}/data_{}/array_steer".format(path_num, data_num)
-        outfile_steer_rate = "./Result/case-{}/data_{}/array_steer_rate".format(path_num, data_num)
-        outfile_t = "./Result/case-{}/data_{}/array_t".format(path_num, data_num)
+    # 如果生成 numpy 文件
+    if args and args.gen_npy:
+        npy_files = ['array_x', 'array_y', 'array_v', 'array_yaw', 'array_a', 'array_steer', 'array_steer_rate', 'array_t']
+        arrays = [path_x, path_y, path_v, path_yaw, path_a, path_steer, path_steer_rate, path_t]
+        for file, array in zip(npy_files, arrays):
+            np.save(f"{data_path}/{file}", array)
 
-        np.save(outfile_t, path_t)
-        np.save(outfile_x, path_x)
-        np.save(outfile_y, path_y)
-        np.save(outfile_v, path_v)
-        np.save(outfile_yaw, path_yaw)
-        np.save(outfile_a, path_a)
-        np.save(outfile_steer, path_steer)
-        np.save(outfile_steer_rate, path_steer_rate)
 
 
 

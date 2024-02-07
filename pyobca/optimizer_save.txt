@@ -4,7 +4,7 @@ from pypoman import compute_polytope_halfspaces
 
 
 class OBCAOptimizer:
-    def __init__(self, cfg: VehicleConfig = VehicleConfig(), whether_fix_4Obs = False) -> None:
+    def __init__(self, cfg: VehicleConfig = VehicleConfig()) -> None:
         self.L = cfg.length
         self.offset = cfg.length/2 - cfg.baselink_to_rear
         # self.lf = cfg.lf
@@ -30,7 +30,6 @@ class OBCAOptimizer:
         self.g = vertcat(SX([cfg.length/2, cfg.length/2,
                              0.5*cfg.width, 0.5*cfg.width]))
         self.T = cfg.T
-        self.whether_fix_4Obs = whether_fix_4Obs
 
     def initialize(self, init_guess, obs, max_x, max_y, min_x, min_y):
         self.init_state = SX([init_guess[0].x, init_guess[0].y,
@@ -54,16 +53,8 @@ class OBCAOptimizer:
                          state.heading, state.steer]]
         self.x0 += [[0]*(self.n_controls*(self.N-1))]
         # self.x0 += [[0.1]*(self.n_dual_variable*(self.N)*2*len(obs))] # 这行删不掉的，尽管看起来没使用
-        if self.whether_fix_4Obs:
-            self.x0 += [[0.1]*(self.n_dual_variable*(self.N)*2*len(obs))]
-        else:
-            for index in range(len(self.obstacles)):
-                for j in range(self.N):
-                    self.x0 +=[[0.1] * self.obstacles_num[index]] # 一个是对应MU
-            for index in range(len(self.obstacles)):
-                for j in range(self.N):
-                    self.x0 +=[[0.1] * self.obstacles_num[index]] # 一个是对应LAMBA
-
+        for number in self.obstacles_num:
+            self.x0 += [[0.1]*number*2]
         self.ref_state = init_guess
         self.max_x = max_x
         self.max_y = max_y
@@ -93,19 +84,17 @@ class OBCAOptimizer:
         self.f = Function('f', [self.state, self.control], [self.rhs])
         self.X = SX.sym('X', self.n_states, self.N)
         self.U = SX.sym('U', self.n_controls, self.N-1) # 表示维度为n_controls*N-1，是一个二维数组
-        if self.whether_fix_4Obs:
-            self.MU = SX.sym('MU', self.n_dual_variable,
-                            self.N*len(self.obstacles))
-            self.LAMBDA = SX.sym('LAMBDA', self.n_dual_variable,
-                                self.N*len(self.obstacles))
-        else:
-            self.MU_list = []
-            self.LAMBDA_list = []
-            for index in range(0,len(self.obstacles)):
-                self.MU_list.append(SX.sym('MU'+str(index), self.obstacles_num[index],
-                                self.N))
-                self.LAMBDA_list.append(SX.sym('LAMBDA'+str(index), self.obstacles_num[index],
-                                self.N))
+        # self.MU = SX.sym('MU', self.n_dual_variable,
+        #                  self.N*len(self.obstacles))
+        # self.LAMBDA = SX.sym('LAMBDA', self.n_dual_variable,
+        #                      self.N*len(self.obstacles))
+        self.MU_list = []
+        self.LAMBDA_list = []
+        for index in range(0,len(self.obstacles)):
+            self.MU_list.append(SX.sym('MU'+str(index), self.obstacles_num[index],
+                             self.N))
+            self.LAMBDA_list.append(SX.sym('LAMBDA'+str(index), self.obstacles_num[index],
+                             self.N))
         self.obj = 0
 
         return True
@@ -153,25 +142,17 @@ class OBCAOptimizer:
             self.variable += [self.U[:, i]]
             self.lbx += [-self.v_cfg.max_acc, -self.v_cfg.max_steer_rate]
             self.ubx += [self.v_cfg.max_acc, self.v_cfg.max_steer_rate]
-        if self.whether_fix_4Obs:
-            for i in range(len(self.obstacles)*self.N):
-                self.variable += [self.MU[:, i]]
-                self.lbx += [0.0, 0.0, 0.0, 0.0]
-                self.ubx += [100000, 100000, 100000, 100000]
-                self.variable += [self.LAMBDA[:, i]]
-                self.lbx += [0.0, 0.0, 0.0, 0.0]
-                self.ubx += [100000, 100000, 100000, 100000]
-        else:
-            for index in range(len(self.obstacles)):
-                for j in range(self.N):
-                    self.variable += [self.MU_list[index][:,j]]
-                    self.lbx += [0.0]*self.obstacles_num[index]
-                    self.ubx += [100000]*self.obstacles_num[index]
-                    self.variable += [self.LAMBDA_list[index][:,j]]
-                    self.lbx += [0.0]*self.obstacles_num[index]
-                    self.ubx += [100000]*self.obstacles_num[index]
+        # for i in range(len(self.obstacles)*self.N):
+        #     self.variable += [self.MU[:, i]]
+        #     self.lbx += [0.0, 0.0, 0.0, 0.0]
+        #     self.ubx += [100000, 100000, 100000, 100000]
+        #     self.variable += [self.LAMBDA[:, i]]
+        #     self.lbx += [0.0, 0.0, 0.0, 0.0]
+        #     self.ubx += [100000, 100000, 100000, 100000]
+        for index in range(len(self.obstacles)):
+            self.variable += [self.MU[:, index]]
 
-    def generate_constrain(self,kinematic_constraints=0.0):
+    def generate_constrain(self):
         # 起点约束
         self.constrains += [self.X[:, 0]-self.init_state]
         self.lbg += [0, 0, 0, 0, 0]
@@ -184,10 +165,8 @@ class OBCAOptimizer:
             st_next = self.X[:, i+1]
             # 中间点约束
             self.constrains += [st_next-st_next_euler]
-            # self.lbg += [0, 0, 0, 0, 0]
-            # self.ubg += [0, 0, 0, 0, 0]
-            self.lbg += [-kinematic_constraints, -kinematic_constraints, -kinematic_constraints, -kinematic_constraints, -kinematic_constraints]
-            self.ubg += [kinematic_constraints, kinematic_constraints, kinematic_constraints, kinematic_constraints, kinematic_constraints]
+            self.lbg += [0, 0, 0, 0, 0]
+            self.ubg += [0, 0, 0, 0, 0]
 
         # 终点约束
         self.constrains += [self.X[:, -1]-self.end_state]
@@ -195,9 +174,9 @@ class OBCAOptimizer:
         self.ubg += [0, 0, 0, 0, 0]
 
         for i in range(self.N):
-            obstacle_index = 0
+            index = 0
             for obstacle in self.obstacles:
-                A, b = compute_polytope_halfspaces(obstacle) # A : obs_edge_num*2, b:obs_edge_num*1
+                A, b = compute_polytope_halfspaces(obstacle)
                 st = self.X[:, i]
                 heading = st[3]
                 x = st[0]
@@ -206,13 +185,9 @@ class OBCAOptimizer:
                             y+self.offset*sin(heading))
                 r = np.array([[cos(heading), -sin(heading)],
                               [sin(heading), cos(heading)]])
-                if self.whether_fix_4Obs:
-                    lamb = vertcat(self.LAMBDA[:, len(self.obstacles)*i+obstacle_index]) # 取到具体的lambda and mu
-                    mu = vertcat(self.MU[:, len(self.obstacles)*i+obstacle_index])
-                else:
-                    lamb = vertcat(self.LAMBDA_list[obstacle_index][:, i]) # i 这里是表征N,dimension:obs_num*1
-                    mu = vertcat(self.MU_list[obstacle_index][:, i])
-                obstacle_index += 1
+                lamb = vertcat(self.LAMBDA[:, len(self.obstacles)*i+index]) # 取到具体的lambda and mu
+                mu = vertcat(self.MU[:, len(self.obstacles)*i+index])
+                index += 1
                 # 公式10的第四项约束
                 self.constrains += [dot(vertcat(A.T)@lamb, vertcat(A.T)@lamb)]
                 self.lbg += [0]

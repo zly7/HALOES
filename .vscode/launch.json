@@ -10,8 +10,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "args": ["--path_num", "33", "--exp_name", "test", "--use_ZLY", "True"]
-            // "args": ["--path_num", "33", "--exp_name", "test"]
+            // "args": ["--path_num", "33", "--exp_name", "test", "--use_ZLY", "True"]
+            // "args": ["--path_num", "29", "--exp_name", "test"]
+            // "args": ["--path_num", "2", "--exp_name", "test", "--use_ZLY", "True", "--whether_use_2D", "True"]
+            // "args": ["--path_num", "23", "--exp_name", "test", "--use_ZLY", "True"]
+            "args": ["--path_num", "2", "--exp_name", "test", "--use_ZLY", "True"]
         }
     ]
 }
