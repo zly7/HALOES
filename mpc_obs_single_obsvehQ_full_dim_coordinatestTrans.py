@@ -102,7 +102,7 @@ def findClosestVec(VehVec, obsLists):
 
 
 if __name__ == '__main__':
-    case = Case.read('BenchmarkCases/Case%d.csv' % 7)
+    case = Case.read('BenchmarkCases/Case%d.csv' % 2)
     wheelbase = 2.8
     T = 0.1  # sampling time [s]
     N = 20  # prediction horizon
@@ -362,7 +362,7 @@ if __name__ == '__main__':
     # obcaPath = Path(path_x, path_y, path_yaw)
     # show(obcaPath, case, 17)
 
-    show(final_path, case, 7, "5-state-init")
+    show(final_path, case, 7, "5-state-init",exp_name="test")
     vehcfg = Vehicle()
     cfg = VehicleConfig()
     cfg.T = 0.2
@@ -374,9 +374,9 @@ if __name__ == '__main__':
                                                             min_x=case.xmin, min_y=case.ymin,
                                                             gap=gap, cfg=cfg, sampleT=sampleT)
     obcaPath = Path(path_x, path_y, path_yaw)
-    show(obcaPath, case, 7, "5-state-obca")
+    show(obcaPath, case, 7, "5-state-obca",exp_name="test")
     obcaPath_5gap = Path(path_x[::5], path_y[::5], path_yaw[::5])
-    show(obcaPath_5gap, case, 7, "5-state-obca-5gap")
+    show(obcaPath_5gap, case, 7, "5-state-obca-5gap",exp_name="test")
     path_t = [sampleT * k for k in range(len(path_x))]
     saveCsv(path_t=path_t, path_x=path_x, path_y=path_y, path_v=path_v, path_yaw=path_yaw, path_a=path_a,
             path_steer=path_steer, path_steer_rate=path_steer_rate, init_x=final_path.x, init_y=final_path.y,

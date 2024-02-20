@@ -11,7 +11,7 @@ from Show import show, show_compare
 from quadraticOBCA import quadraticPath
 from pyobca.search import *
 from pympc.mpc_optimizer import MPCOptimizer
-from saveCsv import saveCsv
+from saveCsv import saveCsv,saveTxt
 import argparse
 from readZLYAnswer import ZLYAnswer
 import math
@@ -30,6 +30,8 @@ def get_argparse():
     parse.add_argument("--gen_npy", action="store_true", default=False, help="Generate the numpy data of trajectory.")
     parse.add_argument("--data_num", type=int, default=3, help="The number of generate numpy data.")
     parse.add_argument("--alg", type=str, default='HA', help="The algorithm of ZLY.")
+    parse.add_argument("--viz", type=bool, default=False, help="The whether VIZ.")
+    parse.add_argument("--more_ocba", type=bool, default=False, help="The whether use ZLY.")
     args = parse.parse_args()
     return args
 
@@ -51,9 +53,12 @@ if __name__ == '__main__':
     exp_name = args.exp_name
     use_trans = args.trans
     alg_name = args.alg
+    whether_viz = args.viz
+    more_ocba = args.more_ocba
     vehicle = Vehicle()
     # 模型预测轨迹规划
     case = Case.read('BenchmarkCasesZLY/Case%d.csv' % path_num)
+    # case  = Case.read('BenchmarkCasesCase%d.csv' % path_num)
     if alg_name == "HA":
         stringEx = "HA/"
     elif alg_name == "EHHA":
@@ -70,7 +75,7 @@ if __name__ == '__main__':
     if not os.path.exists("./Result/{}case-{}".format(stringEx,path_num)):
         os.mkdir("./Result/{}case-{}".format(stringEx,path_num))
 
-    files = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/output_xresult-*.txt")
+    files = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/output_result-*.txt")
     max_index = 0
     for file in files:
         # 提取文件名中的索引部分
@@ -90,32 +95,47 @@ if __name__ == '__main__':
 
     if alg_name=="EHHA" or alg_name=="ENHA" or alg_name=="HA":
         zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
-        zlyAnswer.readTXT()
+        zlyAnswer.readTXT(case)
         initQuadraticPath = zlyAnswer.vehicleNode3D
         final_path = zlyAnswer.final_path
     elif alg_name=="OCBA":
-        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
-        zlyAnswer.readTXT()
-        initQuadraticPath = zlyAnswer.vehicle_2d_ha_path
-        initQuadraticPath[0].heading = case.theta0
-        initQuadraticPath[-1].heading = case.thetaf
-        for i in range(1,len(initQuadraticPath)-1):
-            initQuadraticPath[i].heading = math.atan2((initQuadraticPath[i].y - initQuadraticPath[i-1].y) , (initQuadraticPath[i].x - initQuadraticPath[i-1].x))
-        final_path = Path([initQuadraticPath[i].x for i in range(len(initQuadraticPath))],
-                          [initQuadraticPath[i].y for i in range(len(initQuadraticPath))],
-                          [initQuadraticPath[i].heading for i in range(len(initQuadraticPath))])
+        if more_ocba:
+            zlyAnswer = ZLYAnswer(path_num,mul=1,whtether_use_success_file=False,alg_name=alg_name,more_ocba=more_ocba)
+            zlyAnswer.readTXT(case)
+            final_path = zlyAnswer.final_path
+            initQuadraticPath = zlyAnswer.vehicleNode3D
+        else:
+            zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
+            zlyAnswer.readTXT(case)
+            initQuadraticPath = zlyAnswer.vehicle_2d_path
+            initQuadraticPath[0].heading = case.theta0
+            initQuadraticPath[-1].heading = case.thetaf
+            lengthPath = len(initQuadraticPath)
+            for i in range(1,len(initQuadraticPath)-1):
+                initQuadraticPath[i].heading = math.atan2((initQuadraticPath[i].y - initQuadraticPath[i-1].y) , (initQuadraticPath[i].x - initQuadraticPath[i-1].x))
+                # initQuadraticPath[i].heading = case.theta0 + (case.thetaf - case.theta0) * i / lengthPath
+            final_path = Path([initQuadraticPath[i].x for i in range(len(initQuadraticPath))],
+                            [initQuadraticPath[i].y for i in range(len(initQuadraticPath))],
+                            [initQuadraticPath[i].heading for i in range(len(initQuadraticPath))])
+
 
     elif alg_name=="MPC_OCBA":
-        startTime = time.time()
-        mpc_optimizer = MPCOptimizer(case, vehicle, args)
-        mpc_optimizer.initialize()
-        mpc_optimizer.build_model()
-        mpc_optimizer.generate_object(disCostFinal=50000, deltaCostFinal=10000, disCost=1000, deltaCost=5000,
-                                    aCost=0, steerCost=0, obsPower=1.6)
-        mpc_optimizer.generate_constrain()
-        final_path, initQuadraticPath = mpc_optimizer.solve()
-        endTime = time.time()
-        print("MPC 无视障碍物找到初始解所花时间: ", endTime - startTime)
+        if more_ocba:
+            zlyAnswer = ZLYAnswer(path_num,mul=1,whtether_use_success_file=False,alg_name=alg_name,more_ocba=more_ocba)
+            zlyAnswer.readTXT(case)
+            final_path = zlyAnswer.final_path
+            initQuadraticPath = zlyAnswer.vehicleNode3D
+        else:
+            startTime = time.time()
+            mpc_optimizer = MPCOptimizer(case, vehicle, args)
+            mpc_optimizer.initialize()
+            mpc_optimizer.build_model()
+            mpc_optimizer.generate_object(disCostFinal=50000, deltaCostFinal=10000, disCost=1000, deltaCost=5000,
+                                        aCost=0, steerCost=0, obsPower=1.6)
+            mpc_optimizer.generate_constrain()
+            final_path, initQuadraticPath = mpc_optimizer.solve()
+            endTime = time.time()
+            print("MPC 无视障碍物找到初始解所花时间: ", endTime - startTime)
     else:
         print("Error: The algorithm name is not correct.")
         sys.exit(1)
@@ -130,20 +150,19 @@ if __name__ == '__main__':
     for obs_i in range(len(case.obs)):
         obs = list(case.obs[obs_i])
         obstacles.append(obs)
-    whether_care_origin_path = 0
-    # if whether_use_ZLY and whether_use_2D:
-    #     whether_care_origin_path = 1
-    # elif whether_use_ZLY and not whether_use_2D:
-    #     whether_care_origin_path = 2
     if alg_name=="OCBA" or alg_name=="MPC_OCBA":
-        whether_care_origin_path = 1 #1代表几乎不考虑原始路径
+        whether_care_origin_path = False    
     else:
-        whether_care_origin_path = 2
+        whether_care_origin_path = True
+    whether_special_hyperparameter = False
+    # if alg_name=="MPC_OCBA" or alg_name=="OCBA":
+    #     whether_special_hyperparameter = True
     path_x, path_y, path_v, path_yaw, path_steer, path_a, path_steer_rate = quadraticPath(
                                             initialQuadraticPath=initQuadraticPath, obstacles=obstacles,
                                             vehicle=vehicle, max_x=case.xmax, max_y=case.ymax,
                                             min_x=case.xmin, min_y=case.ymin,
-                                            gap=gap, cfg=cfg, sampleT=sampleT,whether_care_origin_path=whether_care_origin_path)
+                                            gap=gap, cfg=cfg, sampleT=sampleT,whether_care_origin_path=whether_care_origin_path,
+                                            whether_viz=whether_viz,whether_special_hyperparameter=whether_special_hyperparameter)
     # 画图
     obcaPath = Path(path_x, path_y, path_yaw)
 
@@ -160,7 +179,8 @@ if __name__ == '__main__':
     saveCsv(path_t=path_t, path_x=path_x, path_y=path_y, path_v=path_v, path_yaw=path_yaw, path_a=path_a,
             path_steer=path_steer, path_steer_rate=path_steer_rate, init_x=final_path.x, init_y=final_path.y,
             sampleT=sampleT, exp_name=exp_name, path_num=path_num, args=args, data_num=args.data_num,stringEx=stringEx)
-    
+    if(alg_name=="MPC_OCBA" or alg_name=="OCBA"):
+        saveTxt(path_x=path_x, path_y=path_y,  path_yaw=path_yaw, stringEx=stringEx, path_num=path_num)
     sys.stdout = original_stdout
     out_file.close()
 

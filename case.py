@@ -22,14 +22,11 @@ class Case:
             v = [float(i) for i in tmp[0]]
             case.x0, case.y0, case.theta0 = v[0:3]
             case.xf, case.yf, case.thetaf = v[3:6]
-            # case.xmin = min(case.x0, case.xf) - 10
-            # case.xmax = max(case.x0, case.xf) + 10
-            # case.ymin = min(case.y0, case.yf) - 10
-            # case.ymax = max(case.y0, case.yf) + 10
-            # case.xmin = min(case.x0, case.xf)
-            # case.xmax = max(case.x0, case.xf)
-            # case.ymin = min(case.y0, case.yf)
-            # case.ymax = max(case.y0, case.yf)
+            delta = 1
+            case.xmin = min(case.x0, case.xf) - delta
+            case.xmax = max(case.x0, case.xf) + delta
+            case.ymin = min(case.y0, case.yf) - delta
+            case.ymax = max(case.y0, case.yf) + delta
 
             case.obs_num = int(v[6])  # 获取障碍物数目
             num_vertexes = np.array(v[7:7 + case.obs_num], dtype=np.int32)  # 获取每个障碍物的边数
@@ -44,8 +41,8 @@ class Case:
                 case.obs.append(obs_vertices)
                 for vertex in obs_vertices:
                     x, y = vertex
-                    case.xmin = min(case.xmin, x)
-                    case.ymin = min(case.ymin, y)
-                    case.xmax = max(case.xmax, x)
-                    case.ymax = max(case.ymax, y)
+                    case.xmin = min(case.xmin, x -delta)
+                    case.ymin = min(case.ymin, y -delta)
+                    case.xmax = max(case.xmax, x +delta)
+                    case.ymax = max(case.ymax, y +delta)
         return case

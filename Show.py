@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from pypoman import plot_polygon
 
 
-def show(path, case, path_num,stringEx, exp_name, args=None, data_num=0,title = None):
+def show(path, case, path_num,stringEx, exp_name, args=None, data_num=0,title = None, whether_viz = False):
     plt.figure()
     # plt.subplot(1, 2, 1)
     plt.xlim(case.xmin, case.xmax)
@@ -33,11 +33,12 @@ def show(path, case, path_num,stringEx, exp_name, args=None, data_num=0,title = 
     plt.savefig("./Result/{}case-{}/{}-traj{}.svg".format(stringEx,path_num, exp_name, path_num),bbox_inches='tight',pad_inches=0.05)
     if args.gen_npy:
         plt.savefig("./Result/{}case-{}/data_{}/{}-traj{}.svg".format(stringEx,path_num, data_num, exp_name, path_num),bbox_inches='tight',pad_inches=0.05)
-    plt.show()
+    if whether_viz:
+        plt.show()
 
 
 
-def show_compare(path1, path2, case, path_num, stringEx, exp_name, args=None, data_num=0, title=None):
+def show_compare(path1, path2, case, path_num, stringEx, exp_name, args=None, data_num=0, title=None,whether_viz = False):
     plt.figure()
     plt.xlim(case.xmin, case.xmax)
     plt.ylim(case.ymin, case.ymax)
@@ -68,4 +69,5 @@ def show_compare(path1, path2, case, path_num, stringEx, exp_name, args=None, da
     plt.savefig("./Result/{}case-{}/{}-traj{}.svg".format(stringEx, path_num, exp_name, path_num), bbox_inches='tight', pad_inches=0.05)
     if args and args.gen_npy:
         plt.savefig("./Result/{}case-{}/data_{}/{}-traj{}.svg".format(stringEx, path_num, data_num, exp_name, path_num), bbox_inches='tight', pad_inches=0.05)
-    plt.show()
+    if whether_viz:
+        plt.show()

@@ -67,8 +67,8 @@ class OBCAOptimizer:
         self.ref_state = init_guess
         self.max_x = max_x
         self.max_y = max_y
-        self.min_x = min_x
-        self.min_y = min_y
+        self.min_x = max(0,min_x)
+        self.min_y = max(0,min_y)
 
     def build_model(self) -> bool:
         if self.N < 1:
@@ -110,10 +110,16 @@ class OBCAOptimizer:
 
         return True
 
-    def solve(self):
+    def solve(self,use_specify_hyperparameter = False):
         nlp_prob = {'f': self.obj, 'x': vertcat(*self.variable), # 这两想清楚 self.variable是对应的变量，然后回合self.x0维度相同，因为x0是初始值
                     'g': vertcat(*self.constrains)} # 其中f是目标函数（这里初始设置为0），x是优化变量（状态和控制变量），g是约束条件
-        solver = nlpsol('solver', 'ipopt', nlp_prob)
+        if use_specify_hyperparameter:
+            opts_setting = {'ipopt.max_iter': 1000, 'ipopt.print_level': 0, 'print_time': 0, 'ipopt.acceptable_tol': 1e-7,
+                        'ipopt.acceptable_obj_change_tol': 1e-5, }
+            solver = nlpsol('solver', 'ipopt', nlp_prob,opts_setting)
+        else:
+            # opts_setting = {'ipopt.max_iter': 150}
+            solver = nlpsol('solver', 'ipopt', nlp_prob)
         sol = solver(x0=vertcat(*self.x0), lbx=self.lbx, ubx=self.ubx,
                      ubg=self.ubg, lbg=self.lbg) # 这一行已经解决完了
         u_opt = sol['x']

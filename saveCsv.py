@@ -61,6 +61,12 @@ def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_s
         for file, array in zip(npy_files, arrays):
             np.save(f"{data_path}/{file}", array)
 
+def saveTxt(path_x,path_y,path_yaw,path_num, stringEx=''):
+    with open(f'./Result/{stringEx}case-{path_num}/TPCAP_{path_num}_resultViz_0.txt', 'w') as file:
+        for i in range(len(path_x)):
+            file.write("1\n")
+            file.write(f"{path_x[i]} {path_y[i]} {path_yaw[i]}\n")
+
 
 
 

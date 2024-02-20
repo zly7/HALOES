@@ -4,8 +4,9 @@ from coordinatesTrans import coTrans
 import time
 from Vehicle import *
 from PIL import Image, ImageDraw
+from case import Case
 class ZLYAnswer:
-    def __init__(self,index,mul = 0.1,whtether_use_success_file=False,alg_name="OCBA"):
+    def __init__(self,index,mul = 0.1,whtether_use_success_file=False,alg_name="OCBA",more_ocba=False):
         # 打开图片
         self.index = index
         self.whtether_use_success_file = whtether_use_success_file
@@ -14,10 +15,11 @@ class ZLYAnswer:
         self.final_path = Path([], [], [])
         self.vehicle_2d_path = []
         self.vehicle_2d_ha_path = []
-        if alg_name=="OCBA":
+        if alg_name=="OCBA" and more_ocba == False:
             self.alg_name = "EHHA"
         else:
             self.alg_name = alg_name
+        self.more_ocba = more_ocba
 
        
 
@@ -40,12 +42,16 @@ class ZLYAnswer:
         # vehicleNode3D.append([vehicle_x, vehicle_y, yaw])
         return i + 7
 
-    def process_type_3(self, words, i):
+    def process_type_3(self, words, i,case:Case):
         points = []
         i+=1
         for _ in range(4):
-            point_x, point_y =float(words[i]), float(words[i+1])
+            point_x, point_y =float(words[i]) * self.mul, float(words[i+1]) * self.mul
             points.append((point_x, point_y))
+            case.xmax = max(case.xmax, point_x+1)
+            case.xmin = min(case.xmin, point_x-1)
+            case.ymax = max(case.ymax, point_y+1)
+            case.ymin = min(case.ymin, point_y-1)
             i += 2
         # draw.line(points + [points[0]], fill='blue', width=4)
         return i
@@ -54,22 +60,18 @@ class ZLYAnswer:
         yaw = 0
         self.vehicle_2d_path.append(OBCAPath(x,y,yaw))
         return i + 3 # 要记得算自己
-    def readTXT(self):
+    def readTXT(self,case):
         if self.whtether_use_success_file:
             with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_0_success.txt', 'r') as file:
+                content = file.read()
+        elif (self.alg_name == "OCBA" or self.alg_name == "MPC_OCBA") and self.more_ocba:
+            with open(f'./Result/{self.alg_name}/case-{self.index}/TPCAP_{self.index}_resultViz_0.txt', 'r') as file:
                 content = file.read()
         else:
             with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_0.txt', 'r') as file:
                 content = file.read()
-
-        save_path = f"./ZLYresult/trajectory/TPCAP_{self.index}_answer_trajectory.png"
-        # 使用split()按空白字符分割文件内容
         words = content.split()
-
-        #draw = ImageDraw.Draw(tmp)
-        draw = -1
         length=len(words)
-        flag=False
         i = 0
         while i < length:
             if words[i] == "1":
@@ -77,7 +79,7 @@ class ZLYAnswer:
             elif words[i] == "2":
                 i = self.process_type_2(words, i)
             elif words[i] == "3":
-                i = self.process_type_3(words, i)
+                i = self.process_type_3(words, i,case)
             elif words[i] == "0":
                 i = self.process_type_0(words, i)
             else:
