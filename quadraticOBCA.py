@@ -20,7 +20,7 @@ def quadraticPath(initialQuadraticPath, obstacles, vehicle, max_x, max_y, min_x,
     optimizer.initialize(ds_path, obstacles, max_x=max_x, max_y=max_y, min_x=min_x, min_y=min_y)
     optimizer.build_model()
     
-    optimizer.generate_constrain(kinematic_constraints=0.05)
+    optimizer.generate_constrain(kinematic_constraints=0.00)
     # else:
         # optimizer.generate_constrain(kinematic_constraints=0.0)
     optimizer.generate_variable()

@@ -18,6 +18,7 @@ import math
 import sys
 import glob
 import re
+import psutil
 def get_argparse():
     parse = argparse.ArgumentParser(description="Information of Automated Parking.")
     parse.add_argument("--path_num", type=int, default=3, help="The number of case.")
@@ -30,7 +31,7 @@ def get_argparse():
     parse.add_argument("--gen_npy", action="store_true", default=False, help="Generate the numpy data of trajectory.")
     parse.add_argument("--data_num", type=int, default=3, help="The number of generate numpy data.")
     parse.add_argument("--alg", type=str, default='HA', help="The algorithm of ZLY.")
-    parse.add_argument("--viz", type=bool, default=False, help="The whether VIZ.")
+    parse.add_argument("--viz_index", type=int, default=0, help="The whether VIZ.")
     parse.add_argument("--more_ocba", type=bool, default=False, help="The whether use ZLY.")
     args = parse.parse_args()
     return args
@@ -48,12 +49,24 @@ def auto_flush(file, interval):
         time.sleep(interval)
 
 if __name__ == '__main__':
+    # 获取当前Python脚本的进程ID
+    pid = os.getpid()
+    p = psutil.Process(pid)
+
+    # 在Windows系统上设置进程优先级
+    # psutil.REALTIME_PRIORITY_CLASS 是最高优先级
+    # 其他选项包括：HIGH_PRIORITY_CLASS, ABOVE_NORMAL_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS, IDLE_PRIORITY_CLASS
+    try:
+        p.nice(psutil.REALTIME_PRIORITY_CLASS)
+        print(f"Process priority set to real-time for PID {pid}")
+    except Exception as e:
+        print(f"Failed to set process priority: {e}")
     args = get_argparse()
     path_num = args.path_num
     exp_name = args.exp_name
     use_trans = args.trans
     alg_name = args.alg
-    whether_viz = args.viz
+    whether_viz = args.viz_index
     more_ocba = args.more_ocba
     vehicle = Vehicle()
     # 模型预测轨迹规划
@@ -94,7 +107,7 @@ if __name__ == '__main__':
     flush_thread.start()
 
     if alg_name=="EHHA" or alg_name=="ENHA" or alg_name=="HA":
-        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name)
+        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name,)
         zlyAnswer.readTXT(case)
         initQuadraticPath = zlyAnswer.vehicleNode3D
         final_path = zlyAnswer.final_path
@@ -153,7 +166,7 @@ if __name__ == '__main__':
     if alg_name=="OCBA" or alg_name=="MPC_OCBA":
         whether_care_origin_path = False    
     else:
-        whether_care_origin_path = True
+        whether_care_origin_path = False # 这里感觉care 原本的路径反而会出一些问题
     whether_special_hyperparameter = False
     # if alg_name=="MPC_OCBA" or alg_name=="OCBA":
     #     whether_special_hyperparameter = True

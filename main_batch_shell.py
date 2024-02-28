@@ -24,10 +24,10 @@ def run_script(script_name, python_options=None, script_args=None):
         print(f"Error running {script_name} with options {python_options} and args {script_args}: {e}")
 
 if __name__ == "__main__":
-    methods = ['EHHA']
+    # methods = ['EHHA']
     # methods = ['HA']
-    # methods = ['ENHA']
-    for index in [2,5,8,10,11,12,14,23,28,29,33]:
+    methods = ['ENHA']
+    for index in [2,5,8,10,11,12,14,24,27,31,35]:
     # for index in [28,29,33]:
         for method in methods:
             run_script('main.py', script_args=['--path_num', str(index), '--exp_name', "test", '--alg', method])

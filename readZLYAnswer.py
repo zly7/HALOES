@@ -6,7 +6,7 @@ from Vehicle import *
 from PIL import Image, ImageDraw
 from case import Case
 class ZLYAnswer:
-    def __init__(self,index,mul = 0.1,whtether_use_success_file=False,alg_name="OCBA",more_ocba=False):
+    def __init__(self,index,mul = 0.1,whtether_use_success_file=False,alg_name="OCBA",more_ocba=False,viz_index=0):
         # 打开图片
         self.index = index
         self.whtether_use_success_file = whtether_use_success_file
@@ -20,6 +20,7 @@ class ZLYAnswer:
         else:
             self.alg_name = alg_name
         self.more_ocba = more_ocba
+        self.viz_index = viz_index
 
        
 
@@ -62,13 +63,13 @@ class ZLYAnswer:
         return i + 3 # 要记得算自己
     def readTXT(self,case):
         if self.whtether_use_success_file:
-            with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_0_success.txt', 'r') as file:
+            with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_{self.viz_index}_success.txt', 'r') as file:
                 content = file.read()
         elif (self.alg_name == "OCBA" or self.alg_name == "MPC_OCBA") and self.more_ocba:
-            with open(f'./Result/{self.alg_name}/case-{self.index}/TPCAP_{self.index}_resultViz_0.txt', 'r') as file:
+            with open(f'./Result/{self.alg_name}/case-{self.index}/TPCAP_{self.index}_resultViz_{self.viz_index}.txt', 'r') as file:
                 content = file.read()
         else:
-            with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_0.txt', 'r') as file:
+            with open(f'./ZLYoutput/{self.alg_name}/TPCAP_{self.index}_resultViz_{self.viz_index}.txt', 'r') as file:
                 content = file.read()
         words = content.split()
         length=len(words)
