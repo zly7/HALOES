@@ -4,9 +4,9 @@ import numpy as np
 
 
 def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_steer_rate, init_x, init_y, sampleT, 
-            exp_name, path_num, args=None, data_num=0, stringEx=''):
+            exp_name, path_num,new_index, args=None, data_num=0, stringEx=''):
     # 使用 stringEx 更新所有文件和目录路径
-    base_path = "./Result/{}case-{}".format(stringEx, path_num)
+    base_path = "./Result/{}case-{}/time-{}".format(stringEx, path_num,new_index)
     data_path = "{}/data_{}".format(base_path, data_num) if args and args.gen_npy else ""
 
     with open('{}/{}-result-{}.csv'.format(base_path, exp_name, path_num), 'w', encoding='utf-8', newline='') as fp:
@@ -61,8 +61,8 @@ def saveCsv(path_t, path_x, path_y, path_v, path_yaw, path_a, path_steer, path_s
         for file, array in zip(npy_files, arrays):
             np.save(f"{data_path}/{file}", array)
 
-def saveTxt(path_x,path_y,path_yaw,path_num, stringEx=''):
-    with open(f'./Result/{stringEx}case-{path_num}/TPCAP_{path_num}_resultViz_0.txt', 'w') as file:
+def saveTxt(path_x,path_y,path_yaw,path_num,new_index, stringEx=''):
+    with open(f'./Result/{stringEx}case-{path_num}/time-{new_index}/TPCAP_{path_num}_resultViz_0.txt', 'w') as file:
         for i in range(len(path_x)):
             file.write("1\n")
             file.write(f"{path_x[i]} {path_y[i]} {path_yaw[i]}\n")

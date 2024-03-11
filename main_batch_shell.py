@@ -1,3 +1,5 @@
+import glob
+import re
 import subprocess
 import time
 
@@ -24,12 +26,23 @@ def run_script(script_name, python_options=None, script_args=None):
         print(f"Error running {script_name} with options {python_options} and args {script_args}: {e}")
 
 if __name__ == "__main__":
-    # methods = ['EHHA']
-    # methods = ['HA']
-    methods = ['ENHA']
-    for index in [2,5,8,10,11,12,14,24,27,31,35]:
-    # for index in [28,29,33]:
+    while True:
+        methods = ['HA','EHHA','ENHA']
         for method in methods:
-            run_script('main.py', script_args=['--path_num', str(index), '--exp_name', "test", '--alg', method])
-            print(f"Finished running {method} for path {index}")
-            time.sleep(1)
+            for index in [2,5,8,10,11,12,14,24,27,32,35]:
+                files = glob.glob(f"./ZLYoutput/{method}/*")
+                pattern = rf"TPCAP_{index}_resultViz_(\d+)\.txt"
+
+                # 提取并转换Y值为整数
+                values = [int(match.group(1)) for file in files if (match := re.search(pattern, file))]
+
+                filesAlreadyRun = glob.glob(f"./Result/{method}/case-{index}/*")
+                patternForTime= rf"time-(\d+)"
+                valuesAlreadyRun = [int(match.group(1)) for file in filesAlreadyRun if (match := re.search(patternForTime, file))]
+                max_index = max(values) if values else 0
+                start_index = max(valuesAlreadyRun) if valuesAlreadyRun else 0
+                for i in range(start_index, min(max_index+1, start_index+10)):
+                    run_script('main.py', script_args=['--path_num', str(index), '--exp_name', "test", 
+                                                    '--alg', method,'--viz_index', str(i)])
+                    print(f"Finished running {method} for path {index}")
+                    time.sleep(1)

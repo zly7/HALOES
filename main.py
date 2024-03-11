@@ -32,7 +32,7 @@ def get_argparse():
     parse.add_argument("--data_num", type=int, default=3, help="The number of generate numpy data.")
     parse.add_argument("--alg", type=str, default='HA', help="The algorithm of ZLY.")
     parse.add_argument("--viz_index", type=int, default=0, help="The whether VIZ.")
-    parse.add_argument("--more_ocba", type=bool, default=False, help="The whether use ZLY.")
+    parse.add_argument("--more_ocba", type=bool, default=False, help="The whether use increment OCBA.")
     args = parse.parse_args()
     return args
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     exp_name = args.exp_name
     use_trans = args.trans
     alg_name = args.alg
-    whether_viz = args.viz_index
+    viz_index = args.viz_index
     more_ocba = args.more_ocba
     vehicle = Vehicle()
     # 模型预测轨迹规划
@@ -88,17 +88,18 @@ if __name__ == '__main__':
     if not os.path.exists("./Result/{}case-{}".format(stringEx,path_num)):
         os.mkdir("./Result/{}case-{}".format(stringEx,path_num))
 
-    files = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/output_result-*.txt")
+    folders = glob.glob(f"./Result/{stringEx}case-{path_num}" + "/time-*")
     max_index = 0
-    for file in files:
+    for folder in folders:
         # 提取文件名中的索引部分
-        match = re.search(r'output_result-.*-(\d+)\.txt', file)
+        match = re.search(r'time-(\d+)', folder)
         if match:
             index = int(match.group(1))
             if index > max_index:
                 max_index = index
     new_index = max_index + 1
-    out_file = open("./Result/{}case-{}/output_result-{}-{}.txt".format(stringEx,path_num, exp_name,new_index), 'w', encoding='utf-8')
+    os.mkdir(f"./Result/{stringEx}case-{path_num}/time-{new_index}")
+    out_file = open("./Result/{}case-{}/time-{}/output_result.txt".format(stringEx,path_num, new_index), 'w', encoding='utf-8')
     original_stdout = sys.stdout
     sys.stdout = out_file
     flush_interval = 1  # 设置刷新间隔（秒）
@@ -107,7 +108,7 @@ if __name__ == '__main__':
     flush_thread.start()
 
     if alg_name=="EHHA" or alg_name=="ENHA" or alg_name=="HA":
-        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name,)
+        zlyAnswer = ZLYAnswer(path_num,mul=0.1,whtether_use_success_file=False,alg_name=alg_name,viz_index=viz_index)
         zlyAnswer.readTXT(case)
         initQuadraticPath = zlyAnswer.vehicleNode3D
         final_path = zlyAnswer.final_path
@@ -175,25 +176,25 @@ if __name__ == '__main__':
                                             vehicle=vehicle, max_x=case.xmax, max_y=case.ymax,
                                             min_x=case.xmin, min_y=case.ymin,
                                             gap=gap, cfg=cfg, sampleT=sampleT,whether_care_origin_path=whether_care_origin_path,
-                                            whether_viz=whether_viz,whether_special_hyperparameter=whether_special_hyperparameter)
+                                            whether_viz=False,whether_special_hyperparameter=whether_special_hyperparameter)
     # 画图
     obcaPath = Path(path_x, path_y, path_yaw)
 
 
     if args.gen_npy and not os.path.exists("./Result/{}case-{}/data_{}".format(stringEx,path_num, args.data_num)):
         os.mkdir("./Result/{}case-{}/data_{}".format(stringEx,path_num, args.data_num))
-    show(final_path, case, path_num, stringEx, exp_name+"-init", args, data_num=args.data_num)
-    show(obcaPath, case, path_num, stringEx, exp_name+"-obca", args, data_num=args.data_num)
+    show(final_path, case, path_num, stringEx, exp_name+"-init", new_index,args, data_num=args.data_num)
+    show(obcaPath, case, path_num, stringEx, exp_name+"-obca", new_index ,args, data_num=args.data_num)
     obcaPath_5gap = Path(path_x[::5], path_y[::5], path_yaw[::5])
-    show(obcaPath_5gap, case, path_num, stringEx, exp_name+"-5gap", args, data_num=args.data_num)
+    show(obcaPath_5gap, case, path_num, stringEx, exp_name+"-5gap",new_index , args, data_num=args.data_num)
     final_path_5gap = Path(final_path.x[::5], final_path.y[::5], final_path.yaw[::5])
-    show_compare(obcaPath_5gap, final_path_5gap, case, path_num, stringEx, exp_name+"-compare", args, data_num=args.data_num)
+    show_compare(obcaPath_5gap, final_path_5gap, case, path_num, stringEx, exp_name+"-compare",new_index , args, data_num=args.data_num)
     path_t = [sampleT * k for k in range(len(path_x))]
     saveCsv(path_t=path_t, path_x=path_x, path_y=path_y, path_v=path_v, path_yaw=path_yaw, path_a=path_a,
             path_steer=path_steer, path_steer_rate=path_steer_rate, init_x=final_path.x, init_y=final_path.y,
-            sampleT=sampleT, exp_name=exp_name, path_num=path_num, args=args, data_num=args.data_num,stringEx=stringEx)
+            sampleT=sampleT, exp_name=exp_name, path_num=path_num, new_index=new_index, args=args, data_num=args.data_num,stringEx=stringEx)
     if(alg_name=="MPC_OCBA" or alg_name=="OCBA"):
-        saveTxt(path_x=path_x, path_y=path_y,  path_yaw=path_yaw, stringEx=stringEx, path_num=path_num)
+        saveTxt(path_x=path_x, path_y=path_y,  path_yaw=path_yaw, stringEx=stringEx,new_index=new_index, path_num=path_num)
     sys.stdout = original_stdout
     out_file.close()
 
